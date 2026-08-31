@@ -7,9 +7,7 @@ from sqlalchemy import create_engine
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
-print("BASE_DIR:", BASE_DIR)
-print("ENV EXISTS:", (BASE_DIR / ".env").exists())
-print("DB_TYPE:", os.getenv("DB_TYPE"))
+
 
 DB_TYPE = os.getenv("DB_TYPE", "sqlite")
 
