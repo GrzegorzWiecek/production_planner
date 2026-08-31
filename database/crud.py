@@ -110,3 +110,13 @@ def start_production_order(session: Session, order_id: int):
     session.refresh(order)
 
     return order
+
+def get_production_order_by_number(
+    session: Session,
+    order_number: str,
+):
+    return (
+        session.query(ProductionOrder)
+        .filter(ProductionOrder.order_number == order_number)
+        .first()
+    )

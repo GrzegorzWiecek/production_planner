@@ -9,6 +9,7 @@ from database.crud import (
     complete_production_order,
     get_workplaces,
     get_workstations,
+    get_production_order_by_number
 )
 
 
@@ -50,8 +51,10 @@ with st.form("production_order_form"):
     )
 
     submitted = st.form_submit_button("Add order")
-    with Session(engine) as session:
-        orders = get_production_orders(session)
+
+
+    # with Session(engine) as session:
+    #     orders = get_production_orders(session)
 
 
 ##########################
@@ -60,24 +63,102 @@ with st.form("production_order_form"):
 if submitted:
     if not order_number or not product:
         st.error("Order number and product are required.")
+
     else:
         with Session(engine) as session:
-            try:
-                create_production_order(
-                    session=session,
-                    order_number=order_number,
-                    product=product,
-                    quantity=quantity,
-                    planned_date=planned_date,
-                    workstation_id=workstation.id,
+
+            existing_order = get_production_order_by_number(
+                session,
+                order_number,
+            )
+
+            if existing_order:
+                st.error(
+                    f"Order {order_number} already exists."
                 )
 
-                st.success(f"Order {order_number} added successfully.")
-                st.rerun()
+            else:
+                try:
+                    create_production_order(
+                        session=session,
+                        order_number=order_number,
+                        product=product,
+                        quantity=quantity,
+                        planned_date=planned_date,
+                        workstation_id=workstation.id,
+                    )
 
-            except Exception as e:
-                session.rollback()
-                st.error(f"Error: {e}")
+                    st.success(
+                        f"Order {order_number} added successfully."
+                    )
+
+                    st.rerun()
+
+                except Exception as e:
+                    session.rollback()
+                    st.error(f"Error: {e}")
+
+
+st.subheader("Production orders")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    filter_workplace = st.selectbox(
+        "Filter workplace",
+        workplaces,
+        format_func=lambda x: x.name,
+    )
+
+with col2:
+    with Session(engine) as session:
+        filter_workstations = get_workstations(
+            session,
+            filter_workplace.id,
+        )
+
+    filter_workstation = st.selectbox(
+        "Filter workstation",
+        filter_workstations,
+        format_func=lambda x: x.name,
+    )
+
+with col3:
+    filter_status = st.selectbox(
+        "Filter status",
+        ["All", "Planned", "In Progress", "Completed"],
+    )
+
+
+with Session(engine) as session:
+    orders = get_production_orders(session)
+
+orders = [
+    order
+    for order in orders
+    if order.workstation_id == filter_workstation.id
+]
+
+if filter_status == "Planned":
+    orders = [
+        order
+        for order in orders
+        if not order.completed and order.started_at is None
+    ]
+
+elif filter_status == "In Progress":
+    orders = [
+        order
+        for order in orders
+        if not order.completed and order.started_at is not None
+    ]
+
+elif filter_status == "Completed":
+    orders = [
+        order
+        for order in orders
+        if order.completed
+    ]
 
 
 
